@@ -5,7 +5,6 @@ from linebot.models import *
 import os
 
 app = Flask(__name__)
-run_with_ngrok(app)     # 串接 ngrok
 
 @app.route("/", methods=['POST'])
 def linebot():
