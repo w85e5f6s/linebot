@@ -6,38 +6,27 @@ import os
 
 app = Flask(__name__)
 
-@app.route("/", methods=['POST'])
-def linebot():
-    body = request.get_data(as_text=True)                    # 取得收到的訊息內容
-    try:
-        json_data = json.loads(body)                         # json 格式化訊息內容
-        access_token = ''                                    # 你的 Access Token
-        secret = ''                                          # 你的 Channel Secret
-        line_bot_api = LineBotApi(access_token)              # 確認 token 是否正確
-        handler = WebhookHandler(secret)                     # 確認 secret 是否正確
-        signature = request.headers['X-Line-Signature']      # 加入回傳的 headers
-        handler.handle(body, signature)                      # 綁定訊息回傳的相關資訊
-        tk = json_data['events'][0]['replyToken']            # 取得回傳訊息的 Token
-        type = json_data['events'][0]['message']['type']     # 取得 LINE 收到的訊息類型
-        # 判斷如果是文字
-        if type=='text':
-            msg = json_data['events'][0]['message']['text']  # 取得 LINE 收到的文字訊息
-            reply = msg
-        # 判斷如果是圖片
-        elif type == 'image':
-            msgID = json_data['events'][0]['message']['id']  # 取得訊息 id
-            message_content = line_bot_api.get_message_content(msgID)  # 根據訊息 ID 取得訊息內容
-            # 在同樣的資料夾中建立以訊息 ID 為檔名的 .jpg 檔案
-            with open(f'{msgID}.jpg', 'wb') as fd:
-                fd.write(message_content.content)             # 以二進位的方式寫入檔案
-            reply = '圖片儲存完成！'                             # 設定要回傳的訊息
-        else:
-            reply = '你傳的不是文字或圖片呦～'
-        print(reply)
-        line_bot_api.reply_message(tk,TextSendMessage(reply))  # 回傳訊息
-    except:
-        print(body)                                            # 如果發生錯誤，印出收到的內容
-    return 'OK'                                                # 驗證 Webhook 使用，不能省略
+line_bot_api = LineBotApi(os.environ['CHANNEL_ACCESS_TOKEN'])
+handler = WebhookHandler(os.environ['CHANNEL_SECRET'])
 
+
+@app.route("/callback", methods=['POST'])
+def callback():
+    signature = request.headers['X-Line-Signature']
+    body = request.get_data(as_text=True)
+    app.logger.info("Request body: " + body)
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        abort(400)
+    return 'OK'
+
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message(event):
+    message = TextSendMessage(text=event.message.text)
+    line_bot_api.reply_message(event.reply_token, message)
+
+import os
 if __name__ == "__main__":
-    app.run()
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
