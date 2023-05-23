@@ -11,15 +11,19 @@ handler = WebhookHandler(os.environ['CHANNEL_SECRET'])
 
 
 @app.route("/callback", methods=['POST'])
-def callback():
-    signature = request.headers['X-Line-Signature']
-    body = request.get_data(as_text=True)
-    app.logger.info("Request body: " + body)
-    try:
-        handler.handle(body, signature)
-    except InvalidSignatureError:
-        abort(400)
-    return 'OK'
+@handler.add(MessageEvent)
+def handle_message(event):
+    if (event.message.type == "image"):
+        SendImage = line_bot_api.get_message_content(event.message.id)
+
+        path = './Image/' + event.message.id + '.png'
+        with open(path, 'wb') as fd:
+            for chenk in SendImage.iter_content():
+                fd.write(chenk)
+def glucose_graph(client_id, imgpath):
+	im = pyimgur.Imgur(client_id)
+	upload_image = im.upload_image(imgpath, title="Uploaded with PyImgur")
+	return upload_image.link
 
 @handler.add(MessageEvent)
 def handle_message(event):
