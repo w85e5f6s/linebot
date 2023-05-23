@@ -21,11 +21,17 @@ def callback():
         abort(400)
     return 'OK'
 
-@handler.add(MessageEvent, message=TextMessage)
+@handler.add(MessageEvent)
 def handle_message(event):
-    message = TextSendMessage(text=event.message.text)
-    line_bot_api.reply_message(event.reply_token, message)
+	if (event.message.type == "image"):
+		SendImage = line_bot_api.get_message_content(event.message.id)
 
+		local_save = './static/' + event.message.id + '.png'
+		with open(local_save, 'wb') as fd:
+			for chenk in SendImage.iter_content():
+				fd.write(chenk)
+                
+		line_bot_api.reply_message(event.reply_token, ImageSendMessage(original_content_url = ngrok_url + "/static/" + event.message.id + ".png", preview_image_url = ngrok_url + "/static/" + event.message.id + ".png"))
 import os
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
